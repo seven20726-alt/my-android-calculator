@@ -1,0 +1,52 @@
+name: Build and Release APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: default
+          arch: x86_64
+          force-avd-creation: false
+
+      - name: Build Debug APK
+        run: |
+          ./gradlew app:assembleDebug --no-daemon
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ github.run_number }}
+          name: Release v${{ github.run_number }}
+          body: Automated debug APK build
+
+      - name: Upload APK to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
